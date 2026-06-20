@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -236,3 +238,46 @@ func (e *Environment) diskPath() string          { return filepath.Join(e.dataDi
 func (e *Environment) nvramPath() string         { return filepath.Join(e.dataDir(), "nvram.fd") }
 func (e *Environment) seedISOPath() string       { return filepath.Join(e.dataDir(), "seed.iso") }
 func (e *Environment) consoleSocketPath() string { return filepath.Join(e.dataDir(), "console.sock") }
+
+// VNCAddress returns the host "host:port" of the running VM's VNC (RFB) server,
+// e.g. "127.0.0.1:5900", for the graphical-console proxy. It returns an empty
+// string (no error) when the VM is not running or exposes no VNC display.
+//
+// `virsh vncdisplay` returns either ":N" (host implied) or "host:N", where the
+// TCP port is 5900 + N.
+func (e *Environment) VNCAddress(ctx context.Context) (string, error) {
+	out, err := e.driver.VNCDisplay(ctx, e.domainName())
+	if err != nil {
+		return "", err
+	}
+	out = strings.TrimSpace(out)
+	if out == "" {
+		return "", nil
+	}
+
+	// The host is always taken from our own configuration (a loopback address by
+	// default), never from the virsh output — we only trust it for the display
+	// number. This prevents the proxy from ever being pointed at an arbitrary
+	// host (SSRF). The VM's VNC is bound to this same address by the domain XML.
+	host := config.Get().Qemu.VNCBindAddress
+	if host == "" {
+		host = "127.0.0.1"
+	}
+
+	display := out
+	if i := strings.LastIndex(out, ":"); i >= 0 {
+		display = out[i+1:]
+	}
+
+	// The display segment may carry trailing data; keep only the leading digits.
+	end := 0
+	for end < len(display) && display[end] >= '0' && display[end] <= '9' {
+		end++
+	}
+	n, err := strconv.Atoi(display[:end])
+	if err != nil {
+		return "", errors.Wrapf(err, "qemu: could not parse VNC display %q", out)
+	}
+
+	return host + ":" + strconv.Itoa(5900+n), nil
+}

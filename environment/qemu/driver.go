@@ -129,6 +129,20 @@ func (d *driver) GuestInterfaceAddresses(ctx context.Context, name string) (stri
 	return d.virsh(ctx, "domifaddr", name, "--source", "agent")
 }
 
+// VNCDisplay returns the raw `virsh vncdisplay` output for a domain (e.g. ":0"
+// or "127.0.0.1:0"). It is empty when the domain is not running or has no VNC
+// graphics device.
+func (d *driver) VNCDisplay(ctx context.Context, name string) (string, error) {
+	out, err := d.virsh(ctx, "vncdisplay", name)
+	if err != nil {
+		if isNotFound(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return strings.TrimSpace(out), nil
+}
+
 // ---------------------------------------------------------------------------
 // Disk image management (qemu-img)
 // ---------------------------------------------------------------------------
