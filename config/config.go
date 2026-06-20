@@ -300,6 +300,48 @@ type Token struct {
 	Token string
 }
 
+// QemuConfiguration holds the settings used by the QEMU/KVM virtualization
+// backend (environment/qemu). It is only relevant on nodes that host VPS
+// (virtual machine) servers in addition to, or instead of, container servers.
+type QemuConfiguration struct {
+	// Enabled controls whether this node is allowed to provision and run QEMU
+	// virtual machines. When false, any attempt to boot a VM server will error.
+	Enabled bool `default:"false" json:"enabled" yaml:"enabled"`
+
+	// URI is the libvirt connection URI used by the virsh CLI. The default
+	// connects to the system-wide libvirt daemon.
+	URI string `default:"qemu:///system" json:"uri" yaml:"uri"`
+
+	// DataDirectory is where per-VM disk images (qcow2) are stored.
+	DataDirectory string `default:"/var/lib/pterodactyl/vms" json:"-" yaml:"data_directory"`
+
+	// TemplateDirectory is where base/template disk images are cached. New VMs
+	// are created as copy-on-write overlays backed by an image in this directory.
+	TemplateDirectory string `default:"/var/lib/pterodactyl/vm-templates" json:"-" yaml:"template_directory"`
+
+	// Bridge is the host network bridge that VM tap interfaces are attached to.
+	Bridge string `default:"virbr0" json:"bridge" yaml:"bridge"`
+
+	// Nameserver is the default DNS server injected into Linux guests via
+	// cloud-init when the guest does not otherwise configure one.
+	Nameserver string `default:"1.1.1.1" json:"nameserver" yaml:"nameserver"`
+
+	// EnableKVM enables hardware acceleration (requires /dev/kvm). Disable only
+	// for nested/emulated environments where KVM is unavailable (much slower).
+	EnableKVM bool `default:"true" json:"enable_kvm" yaml:"enable_kvm"`
+
+	// VNCBindAddress is the address the per-VM VNC graphical console binds to on
+	// the host. Defaults to loopback; a websocket proxy should be used to expose
+	// it rather than binding to a public interface.
+	VNCBindAddress string `default:"127.0.0.1" json:"vnc_bind_address" yaml:"vnc_bind_address"`
+
+	// OVMFCodePath / OVMFVarsPath point at the UEFI firmware images used for
+	// guests that require UEFI (e.g. Windows 11). The vars template is copied
+	// per-VM so each guest gets its own writable NVRAM store.
+	OVMFCodePath string `default:"/usr/share/OVMF/OVMF_CODE.fd" json:"-" yaml:"ovmf_code_path"`
+	OVMFVarsPath string `default:"/usr/share/OVMF/OVMF_VARS.fd" json:"-" yaml:"ovmf_vars_path"`
+}
+
 type Configuration struct {
 	Token Token `json:"-" yaml:"-"`
 
@@ -326,6 +368,7 @@ type Configuration struct {
 	Api    ApiConfiguration    `json:"api" yaml:"api"`
 	System SystemConfiguration `json:"system" yaml:"system"`
 	Docker DockerConfiguration `json:"docker" yaml:"docker"`
+	Qemu   QemuConfiguration   `json:"qemu" yaml:"qemu"`
 
 	// Defines internal throttling configurations for server processes to prevent
 	// someone from running an endless loop that spams data to logs.

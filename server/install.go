@@ -43,7 +43,15 @@ func (s *Server) install(reinstall bool) error {
 		// install process being executed.
 		s.Events().Publish(InstallStartedEvent, "")
 
-		err = s.internalInstall()
+		// Virtual machines are "installed" by provisioning their disk, firmware
+		// and cloud-init media and defining the libvirt domain — all of which is
+		// handled by the environment's Create() call. Container servers run the
+		// Docker-based egg installation script instead.
+		if s.IsVM() {
+			err = s.Environment.Create()
+		} else {
+			err = s.internalInstall()
+		}
 	} else {
 		s.Log().Info("server configured to skip running installation scripts for this egg, not executing process")
 	}

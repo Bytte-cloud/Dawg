@@ -73,7 +73,9 @@ func Configure(m *wserver.Manager, client remote.Client) *gin.Engine {
 
 		server.GET("/logs", getServerLogs)
 		server.POST("/power", postServerPower)
-		server.POST("/commands", postServerCommands)
+		// Sending stdin commands requires a text console (not available for
+		// graphical-only VM guests such as Windows).
+		server.POST("/commands", middleware.RequireTextConsole(), postServerCommands)
 		server.POST("/install", postServerInstall)
 		server.POST("/reinstall", postServerReinstall)
 		server.POST("/sync", postServerSync)
@@ -84,7 +86,10 @@ func Configure(m *wserver.Manager, client remote.Client) *gin.Engine {
 		server.POST("/transfer", postServerTransfer)
 		server.DELETE("/transfer", deleteServerTransfer)
 
+		// File management requires a host-managed filesystem; VM (QEMU) backends
+		// own their disk inside the guest, so these endpoints are gated off.
 		files := server.Group("/files")
+		files.Use(middleware.RequireFilesystem())
 		{
 			files.GET("/contents", getServerFileContents)
 			files.GET("/list-directory", getServerListDirectory)
@@ -102,7 +107,10 @@ func Configure(m *wserver.Manager, client remote.Client) *gin.Engine {
 			files.DELETE("/pull/:download", middleware.RemoteDownloadEnabled(), deleteServerPullRemoteFile)
 		}
 
+		// Host-side backups operate on the server's files; VM backends would use
+		// qcow2 snapshots instead (not yet implemented), so gate these off too.
 		backup := server.Group("/backup")
+		backup.Use(middleware.RequireFilesystem())
 		{
 			backup.POST("", postServerBackup)
 			backup.POST("/:backup/restore", postServerRestoreBackup)

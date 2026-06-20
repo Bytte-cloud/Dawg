@@ -18,6 +18,7 @@ import (
 	"github.com/pterodactyl/wings/config"
 	"github.com/pterodactyl/wings/environment"
 	"github.com/pterodactyl/wings/environment/docker"
+	"github.com/pterodactyl/wings/environment/qemu"
 	"github.com/pterodactyl/wings/remote"
 	"github.com/pterodactyl/wings/server/filesystem"
 )
@@ -201,9 +202,10 @@ func (m *Manager) InitServer(data remote.ServerConfigurationResponse) (*Server, 
 		return nil, errors.WithStackIf(err)
 	}
 
-	// Right now we only support a Docker based environment, so I'm going to hard code
-	// this logic in. When we're ready to support other environment we'll need to make
-	// some modifications here, obviously.
+	// The execution backend is selected per-server. By default a server runs in a
+	// Docker container; servers flagged with environment_type "qemu" run as a
+	// QEMU/KVM virtual machine instead. Both backends implement the same
+	// environment.ProcessEnvironment interface so the rest of Wings is agnostic.
 	settings := environment.Settings{
 		Mounts:      s.Mounts(),
 		Allocations: s.cfg.Allocations,
@@ -212,16 +214,26 @@ func (m *Manager) InitServer(data remote.ServerConfigurationResponse) (*Server, 
 	}
 
 	envCfg := environment.NewConfiguration(settings, s.GetEnvironmentVariables())
-	meta := docker.Metadata{
-		Image: s.Config().Container.Image,
-	}
 
-	if env, err := docker.New(s.ID(), &meta, envCfg); err != nil {
-		return nil, err
+	var env environment.ProcessEnvironment
+	if s.IsVM() {
+		meta := qemu.Metadata{
+			Image:    s.Config().Container.Image,
+			OS:       s.cfg.Labels["vm.os"],
+			Firmware: s.cfg.Labels["vm.firmware"],
+		}
+		env, err = qemu.New(s.ID(), &meta, envCfg)
 	} else {
-		s.Environment = env
-		s.StartEventListeners()
+		meta := docker.Metadata{
+			Image: s.Config().Container.Image,
+		}
+		env, err = docker.New(s.ID(), &meta, envCfg)
 	}
+	if err != nil {
+		return nil, err
+	}
+	s.Environment = env
+	s.StartEventListeners()
 
 	// If the server's data directory exists, force disk usage calculation.
 	if _, err := os.Stat(s.Filesystem().Path()); err == nil {
