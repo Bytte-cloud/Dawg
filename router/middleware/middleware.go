@@ -12,9 +12,39 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/pterodactyl/wings/config"
+	"github.com/pterodactyl/wings/environment"
 	"github.com/pterodactyl/wings/remote"
 	"github.com/pterodactyl/wings/server"
 )
+
+// RequireFilesystem aborts a request when the target server's environment does
+// not expose a host-managed filesystem. This is the case for VM (QEMU) backends
+// where the guest owns its disk, so the file manager, SFTP-backed endpoints and
+// host-side backups are not applicable.
+func RequireFilesystem() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		s := ExtractServer(c)
+		if s == nil || !environment.GetCapabilities(s.Environment).Filesystem {
+			c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "This server's environment does not support host file management."})
+			return
+		}
+		c.Next()
+	}
+}
+
+// RequireTextConsole aborts a request when the target server's environment has
+// no text console (e.g. a graphical-only VM guest), where sending stdin commands
+// is unsupported.
+func RequireTextConsole() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		s := ExtractServer(c)
+		if s == nil || !environment.GetCapabilities(s.Environment).TextConsole {
+			c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "This server's environment does not support a text console."})
+			return
+		}
+		c.Next()
+	}
+}
 
 // AttachRequestID attaches a unique ID to the incoming HTTP request so that any
 // errors that are generated or returned to the client will include this reference

@@ -55,6 +55,13 @@ type Configuration struct {
 	Mounts                []Mount                 `json:"mounts"`
 	Egg                   EggConfiguration        `json:"egg,omitempty"`
 
+	// EnvironmentType selects which execution backend runs this server. An empty
+	// value (the default) means the Docker container backend, preserving the
+	// behaviour of all existing servers. "qemu" runs the server as a QEMU/KVM
+	// virtual machine. The Panel may send this field; older panels simply omit
+	// it.
+	EnvironmentType string `json:"environment_type,omitempty"`
+
 	Container struct {
 		// Defines the Docker image that will be used for this server
 		Image string `json:"image,omitempty"`
@@ -65,6 +72,14 @@ func (s *Server) Config() *Configuration {
 	s.cfg.mu.RLock()
 	defer s.cfg.mu.RUnlock()
 	return &s.cfg
+}
+
+// IsVM reports whether this server runs as a virtual machine (QEMU/KVM backend)
+// rather than a Docker container.
+func (s *Server) IsVM() bool {
+	s.cfg.mu.RLock()
+	defer s.cfg.mu.RUnlock()
+	return s.cfg.EnvironmentType == "qemu"
 }
 
 // DiskSpace returns the amount of disk space available to a server in bytes.
