@@ -49,6 +49,10 @@ func Configure(m *wserver.Manager, client remote.Client) *gin.Engine {
 	// accessible.
 	router.GET("/api/servers/:server/ws", middleware.ServerExists(), getServerWebsocket)
 
+	// Graphical (VNC) console for VM servers. Like the console websocket, auth is
+	// handled in-band (a "token" query parameter) rather than via a header.
+	router.GET("/api/servers/:server/vnc", middleware.ServerExists(), getServerVNC)
+
 	// This request is called by another daemon when a server is going to be transferred out.
 	// This request does not need the AuthorizationMiddleware as the panel should never call it
 	// and requests are authenticated through a JWT the panel issues to the other daemon.

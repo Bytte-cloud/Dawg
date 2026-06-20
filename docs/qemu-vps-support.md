@@ -106,8 +106,15 @@ A new capability model (`environment/capabilities.go`,
    routes still assume a host-managed filesystem/text console. They should call
    `environment.GetCapabilities(s.Environment)` and return `409` when the
    capability is absent. The capability helper exists; the route wiring does not.
-2. **Graphical (VNC) console proxy** — Windows (and Linux installs) need a
-   websocket→VNC proxy in Wings and a noVNC viewer in the panel client.
+2. ~~**Graphical (VNC) console proxy**~~ — **DONE.** `GET /api/servers/:server/vnc`
+   upgrades to a websocket and proxies RFB bytes to the VM's VNC port. The port is
+   discovered via `virsh vncdisplay` but the host is forced to the configured
+   loopback `VNCBindAddress` (no SSRF). Auth reuses the panel's short-lived
+   websocket JWT, passed as a `?token=` query parameter (a noVNC constraint, since
+   it sends RFB immediately) and validated before the upgrade; the session is
+   dropped if the token is later denylisted (revoked). The panel renders a noVNC
+   viewer (`VncConsole`) for VM servers. Remaining nice-to-have: move the token off
+   the URL via a session-id exchange, and add a graphical-console permission.
 3. **Windows provisioning** — cloud-init is Linux-only; Windows needs
    cloudbase-init or an `unattend.xml`, plus virtio-win for performant disk/net.
    Current Windows defaults boot driver-free (SATA + e1000e).
