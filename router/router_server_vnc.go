@@ -25,6 +25,12 @@ var vncUpgrader = ws.Upgrader{
 	// proxies (notably Cloudflare) drop a WebSocket upgrade whose response does
 	// not select a subprotocol the client offered, surfacing as a 1006 close.
 	Subprotocols: []string{"binary"},
+	// Negotiate permessage-deflate when the client asks for it. Chrome always
+	// offers it; if the origin declines while a proxy in front (Cloudflare)
+	// negotiates it with the browser, the compression state desyncs and the
+	// stream corrupts — the browser reports it as an immediate 1006 close even
+	// though the handshake returned 101. Agreeing keeps the chain consistent.
+	EnableCompression: true,
 	CheckOrigin: func(r *http.Request) bool {
 		o := r.Header.Get("Origin")
 		if o == config.Get().PanelLocation {

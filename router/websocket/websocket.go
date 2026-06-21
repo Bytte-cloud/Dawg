@@ -84,6 +84,10 @@ func NewTokenPayload(token []byte) (*tokens.WebsocketPayload, error) {
 // GetHandler returns a new websocket handler using the context provided.
 func GetHandler(s *server.Server, w http.ResponseWriter, r *http.Request, c *gin.Context) (*Handler, error) {
 	upgrader := websocket.Upgrader{
+		// Negotiate permessage-deflate when offered so the compression state stays
+		// consistent with a proxy in front (e.g. Cloudflare) that also negotiates
+		// it; a mismatch corrupts the stream and shows as a 1006 close.
+		EnableCompression: true,
 		// Ensure that the websocket request is originating from the Panel itself,
 		// and not some other location.
 		CheckOrigin: func(r *http.Request) bool {
