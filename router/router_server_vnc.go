@@ -20,6 +20,11 @@ import (
 // vncUpgrader mirrors the origin checking used by the console websocket so the
 // VNC stream is only accepted from the Panel / configured origins.
 var vncUpgrader = ws.Upgrader{
+	// noVNC opens the socket with the "binary" subprotocol. Echo it back so the
+	// 101 response acknowledges the requested subprotocol — strict clients and
+	// proxies (notably Cloudflare) drop a WebSocket upgrade whose response does
+	// not select a subprotocol the client offered, surfacing as a 1006 close.
+	Subprotocols: []string{"binary"},
 	CheckOrigin: func(r *http.Request) bool {
 		o := r.Header.Get("Origin")
 		if o == config.Get().PanelLocation {
