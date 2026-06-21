@@ -3,6 +3,7 @@ package qemu
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os/exec"
 	"strings"
 
@@ -165,6 +166,22 @@ func (d *driver) CreateBlank(ctx context.Context, target, size string) error {
 func (d *driver) Resize(ctx context.Context, target, size string) error {
 	_, err := d.run(ctx, "qemu-img", "resize", target, size)
 	return err
+}
+
+// VirtualSize returns the virtual (guest-visible) size of a qcow2 image in
+// bytes. Callers use it to avoid attempting a shrink, which qemu-img rejects.
+func (d *driver) VirtualSize(ctx context.Context, target string) (int64, error) {
+	out, err := d.run(ctx, "qemu-img", "info", "--output=json", target)
+	if err != nil {
+		return 0, err
+	}
+	var info struct {
+		VirtualSize int64 `json:"virtual-size"`
+	}
+	if err := json.Unmarshal([]byte(out), &info); err != nil {
+		return 0, errors.Wrap(err, "qemu/driver: failed to parse qemu-img info output")
+	}
+	return info.VirtualSize, nil
 }
 
 // isNotFound returns true when an error from virsh indicates the domain does not

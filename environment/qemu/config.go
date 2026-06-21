@@ -95,6 +95,16 @@ func diskSizeString(l environment.Limits) string {
 	return fmt.Sprintf("%dM", mb)
 }
 
+// diskBytes returns the panel disk limit in bytes, applying the same 1 GiB floor
+// as diskSizeString. Used for grow-only comparisons against the base image.
+func diskBytes(l environment.Limits) int64 {
+	mb := l.DiskSpace
+	if mb < 1024 {
+		mb = 1024
+	}
+	return int64(mb) * 1024 * 1024
+}
+
 // cpuQuotaPercent returns the host CPU cap as a percentage for the cgroup that
 // libvirt applies to the VM (mirrors the panel's CpuLimit). Zero means uncapped.
 func cpuQuotaPercent(l environment.Limits) int64 {

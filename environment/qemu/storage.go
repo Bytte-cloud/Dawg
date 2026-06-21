@@ -77,7 +77,8 @@ func (e *Environment) ensureBaseImage(ctx context.Context) (string, error) {
 // base image, then grows it to the panel-configured size. It is a no-op if the
 // disk already exists.
 func (e *Environment) provisionDisk(ctx context.Context) error {
-	if err := os.MkdirAll(e.dataDir(), 0o700); err != nil {
+	// 0o711 so the unprivileged qemu user libvirt spawns can traverse to the disk.
+	if err := os.MkdirAll(e.dataDir(), 0o711); err != nil {
 		return errors.Wrap(err, "qemu: failed to create VM data directory")
 	}
 
@@ -94,12 +95,21 @@ func (e *Environment) provisionDisk(ctx context.Context) error {
 		return errors.Wrap(err, "qemu: failed to create disk overlay")
 	}
 
-	// Grow the overlay to the requested size. qemu-img only ever grows here; the
-	// guest filesystem still needs to be expanded inside the VM (cloud-init's
-	// growpart/resizefs handles this for Linux templates).
-	size := diskSizeString(e.Config().Limits())
-	if err := e.driver.Resize(ctx, e.diskPath(), size); err != nil {
-		return errors.Wrap(err, "qemu: failed to resize disk overlay")
+	// Grow the overlay to the requested size, but never shrink it: qemu-img
+	// refuses to shrink (it would discard data past the new end), and a CoW
+	// overlay can't be smaller than its backing image anyway. If the panel disk
+	// limit is below the base image's virtual size we leave it at the image size.
+	// (The guest filesystem is expanded inside the VM by cloud-init's
+	// growpart/resizefs for Linux templates.)
+	target := diskBytes(e.Config().Limits())
+	current, err := e.driver.VirtualSize(ctx, e.diskPath())
+	if err != nil {
+		return errors.Wrap(err, "qemu: failed to read disk overlay size")
+	}
+	if target > current {
+		if err := e.driver.Resize(ctx, e.diskPath(), diskSizeString(e.Config().Limits())); err != nil {
+			return errors.Wrap(err, "qemu: failed to resize disk overlay")
+		}
 	}
 
 	return nil
