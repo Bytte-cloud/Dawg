@@ -87,7 +87,10 @@ func (e *Environment) Create() error {
 
 	ctx := context.Background()
 
-	if err := os.MkdirAll(e.dataDir(), 0o700); err != nil {
+	// 0o711 (not 0o700): libvirt launches qemu as an unprivileged user that must
+	// traverse this directory to reach the disk/seed/nvram files it owns. Without
+	// the o+x bit, start fails with "Cannot access storage file".
+	if err := os.MkdirAll(e.dataDir(), 0o711); err != nil {
 		return errors.Wrap(err, "qemu: failed to create VM data directory")
 	}
 
