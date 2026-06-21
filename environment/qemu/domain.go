@@ -127,10 +127,18 @@ func (s DomainSpec) XML() (string, error) {
 		}
 	}
 
-	// Use host CPU model for best performance.
+	// Use the host CPU model for best performance under KVM. host-passthrough
+	// requires KVM; under TCG (software emulation, no /dev/kvm) it cannot start,
+	// so fall back to a generic model qemu can emulate.
 	cpu := domain.CreateElement("cpu")
-	cpu.CreateAttr("mode", "host-passthrough")
-	cpu.CreateAttr("check", "none")
+	if s.UseKVM {
+		cpu.CreateAttr("mode", "host-passthrough")
+		cpu.CreateAttr("check", "none")
+	} else {
+		cpu.CreateAttr("mode", "custom")
+		cpu.CreateAttr("match", "exact")
+		cpu.CreateElement("model").SetText("qemu64")
+	}
 
 	// Clock: Windows expects localtime, everything else UTC.
 	clock := domain.CreateElement("clock")
@@ -216,7 +224,11 @@ func (s DomainSpec) XML() (string, error) {
 	graphics.CreateAttr("port", "-1")
 	graphics.CreateAttr("autoport", "yes")
 	if s.VNCListen != "" {
-		graphics.CreateElement("listen").CreateAttr("address", s.VNCListen)
+		// libvirt requires the <listen> element to carry an explicit type;
+		// without type="address" it rejects the domain at define time.
+		listen := graphics.CreateElement("listen")
+		listen.CreateAttr("type", "address")
+		listen.CreateAttr("address", s.VNCListen)
 	}
 	video := devices.CreateElement("video")
 	video.CreateElement("model").CreateAttr("type", "qxl")
