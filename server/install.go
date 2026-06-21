@@ -361,7 +361,7 @@ func (ip *InstallationProcess) AfterExecute(containerId string) error {
 	// variables passed into the container to make debugging things a little easier.
 	ip.Server.Log().WithField("path", ip.GetLogPath()).Debug("writing most recent installation logs to disk")
 
-	tmpl, err := template.New("header").Parse(`Pterodactyl Server Installation Log
+	tmpl, err := template.New("header").Parse(`Dawg Server Installation Log
 
 |
 | Details
@@ -415,7 +415,7 @@ func (ip *InstallationProcess) Execute() (string, error) {
 		Image:        ip.Script.ContainerImage,
 		Env:          ip.Server.GetEnvironmentVariables(),
 		Labels: map[string]string{
-			"Service":       "Pterodactyl",
+			"Service":       "Dawg",
 			"ContainerType": "server_installer",
 		},
 	}
