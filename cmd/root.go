@@ -45,7 +45,7 @@ var (
 
 var rootCommand = &cobra.Command{
 	Use:   "wings",
-	Short: "Runs the API server allowing programmatic control of game servers for Pterodactyl Panel.",
+	Short: "Runs the API server allowing programmatic control of game servers and VPS for the Ruff Panel.",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		initConfig()
 		initLogging()
@@ -111,8 +111,8 @@ func rootCmdRun(cmd *cobra.Command, _ []string) {
 		log.WithField("error", err).Fatal("failed to configure system directories for pterodactyl")
 		return
 	}
-	if err := config.EnsurePterodactylUser(); err != nil {
-		log.WithField("error", err).Fatal("failed to create pterodactyl system user")
+	if err := config.EnsureDawgUser(); err != nil {
+		log.WithField("error", err).Fatal("failed to create dawg system user")
 		return
 	}
 	if err := config.ConfigurePasswd(); err != nil {
@@ -437,17 +437,18 @@ func initLogging() {
 func printLogo() {
 	fmt.Printf(colorstring.Color(`
                      ____
-__ [blue][bold]Pterodactyl[reset] _____/___/_______ _______ ______
+__ [blue][bold]Dawg[reset] _____/___/_______ _______ ______
 \_____\    \/\/    /   /       /  __   /   ___/
    \___\          /   /   /   /  /_/  /___   /
         \___/\___/___/___/___/___    /______/
                             /_______/ [bold]%s[reset]
 
-Copyright © 2018 - %d Dane Everitt & Contributors
+Copyright © 2018 - %d Dane Everitt & Contributors (upstream Wings)
+        Dawg fork © Bytte
 
-Website:  https://pterodactyl.io
- Source:  https://github.com/pterodactyl/wings
-License:  https://github.com/pterodactyl/wings/blob/develop/LICENSE
+Website:  https://bytte.cloud
+ Source:  https://github.com/Bytte-cloud/Dawg
+License:  https://github.com/Bytte-cloud/Dawg/blob/develop/LICENSE
 
 This software is made available under the terms of the MIT license.
 The above copyright notice and this permission notice shall be included
