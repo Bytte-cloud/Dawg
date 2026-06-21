@@ -126,8 +126,10 @@ func (e *Environment) Create() error {
 		return errors.Wrap(err, "qemu: failed to write domain XML")
 	}
 
-	// 5. Define the domain with libvirt.
-	if err := e.driver.DefineFromFile(ctx, xmlPath); err != nil {
+	// 5. Define the domain with libvirt. A domain with this name already being
+	// defined (a redundant/racing provision, or a leftover from a previous run)
+	// is treated as success so Create stays idempotent.
+	if err := e.driver.DefineFromFile(ctx, xmlPath); err != nil && !isAlreadyExists(err) {
 		return err
 	}
 

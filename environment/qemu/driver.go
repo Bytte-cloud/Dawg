@@ -178,3 +178,14 @@ func isNotFound(err error) bool {
 		strings.Contains(s, "domain not found") ||
 		strings.Contains(s, "no domain with matching name")
 }
+
+// isAlreadyExists reports whether a virsh error indicates a domain with the
+// target name is already defined. Create treats this as success so a redundant
+// or racing provision (or a domain left over from a previous run) is idempotent
+// rather than fatal.
+func isAlreadyExists(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "already exists")
+}
