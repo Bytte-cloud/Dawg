@@ -77,7 +77,8 @@ func (e *Environment) ensureBaseImage(ctx context.Context) (string, error) {
 // base image, then grows it to the panel-configured size. It is a no-op if the
 // disk already exists.
 func (e *Environment) provisionDisk(ctx context.Context) error {
-	if err := os.MkdirAll(e.dataDir(), 0o700); err != nil {
+	// 0o711 so the unprivileged qemu user libvirt spawns can traverse to the disk.
+	if err := os.MkdirAll(e.dataDir(), 0o711); err != nil {
 		return errors.Wrap(err, "qemu: failed to create VM data directory")
 	}
 
